@@ -3,7 +3,6 @@
 <head>
 <title>Chemistry Game Hub</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <style>
 body{font-family:Arial;background:#0b132b;color:white;margin:0;position:relative}
 .card{background:#1c2541;margin:20px;padding:20px;border-radius:15px;text-align:center}
@@ -17,126 +16,83 @@ table{margin:auto;color:white;border-collapse:collapse}
 #leaderboardTable td,#leaderboardTable th{padding:8px;border:1px solid white}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-6px)}}
 @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
-
-/* medals */
 .gold{background:#ffd700;color:black}
 .silver{background:#c0c0c0;color:black}
 .bronze{background:#cd7f32;color:black}
-
-/* nav */
 nav{background:#111;color:white;display:flex;align-items:center;padding:10px}
 nav h2{margin:0 20px}
 nav button{background:#1c2541;color:white}
 .dropdown{position:relative}
-.dropdown-content{
-display:none;
-position:absolute;
-background:#1c2541;
-min-width:160px;
-z-index:1;
-padding:10px;
-border-radius:10px;
-}
+.dropdown-content{display:none;position:absolute;background:#1c2541;min-width:160px;z-index:1;padding:10px;border-radius:10px;}
 .dropdown:hover .dropdown-content{display:block}
 .dropdown-content button{display:block;width:100%}
-
-/* Points Counter */
-#pointsCounter{
-position:absolute;
-top:10px;
-right:10px;
-background:#3a506b;
-padding:10px 15px;
-border-radius:10px;
-font-size:18px;
-}
+#pointsCounter{position:absolute;top:10px;right:10px;background:#3a506b;padding:10px 15px;border-radius:10px;font-size:18px;}
 </style>
 </head>
-
 <body>
 
-<!-- NAV BAR -->
 <nav>
 <h2>⚡ Chem Game Hub</h2>
-
 <div class="dropdown">
 <button>🎮 Games</button>
 <div class="dropdown-content">
-<button onclick="chooseClass('Bonding')">🔗 Bonding</button>
-<button onclick="chooseClass('Reactions')">🔥 Reactions</button>
-<button onclick="chooseClass('Atoms')">🧬 Atoms & Ions</button>
-<button onclick="chooseClass('Balancing')">⚖️ Balancing</button>
+<button onclick="chooseGame('Bonding')">🔗 Bonding</button>
+<button onclick="chooseGame('Reactions')">🔥 Reactions</button>
+<button onclick="chooseGame('Atoms')">🧬 Atoms & Ions</button>
+<button onclick="chooseGame('Balancing')">⚖️ Balancing</button>
 </div>
 </div>
-
 <button onclick="showLeaderboard()">🏆 Leaderboard</button>
 <button onclick="adminGate(showDashboard)">📊 Teacher Tools</button>
 </nav>
 
 <h1 style="text-align:center;margin-top:20px;">Welcome to Chemistry Games!</h1>
-
-<!-- Points Counter -->
 <div id="pointsCounter" class="hidden">Points: 0 / 30</div>
 
-<!-- STEP 1 CLASS -->
+<!-- Pages -->
 <div id="classPage" class="card hidden">
 <h2>Select Your Class</h2>
 <button class="mode" onclick="setClass('8A')">8A</button>
 <button class="mode" onclick="setClass('8C')">8C</button>
 </div>
 
-<!-- STEP 2 MODE -->
 <div id="modePage" class="card hidden">
 <h2>How Are You Playing?</h2>
 <button onclick="setPlayMode('Solo')" class="mode">🎯 Individual</button>
 <button onclick="setPlayMode('Battle')" class="mode">⚔️ Group Battle</button>
 </div>
 
-<!-- STEP 3 NAME -->
 <div id="namePage" class="card hidden">
 <h2>Enter Your Info</h2>
 <p>Name (or initials):</p>
 <input id="studentName">
-
-<p>School Appropriate Nickname:</p>
+<p>Nickname:</p>
 <input id="nickname">
-
 <button onclick="startGame()" class="mode">Start Game</button>
 </div>
 
-<!-- GAME -->
 <div id="gamePage" class="card hidden">
 <h2 id="modeTitle"></h2>
 <h3 id="question"></h3>
 <div id="answers"></div>
 </div>
 
-<!-- END -->
 <div id="endPage" class="card hidden">
 <h2 id="scoreText"></h2>
 <button onclick="window.print()">🖨 Print Report</button>
 <button onclick="location.reload()">Home</button>
 </div>
 
-<!-- LEADERBOARD -->
 <div id="leaderboardPage" class="card hidden">
 <h2>🏆 Leaderboard</h2>
 <button onclick="setBoardFilter('ALL')" class="mode">All Classes</button>
 <button onclick="setBoardFilter('8A')" class="mode">8A Only</button>
 <button onclick="setBoardFilter('8C')" class="mode">8C Only</button>
-
 <table id="leaderboardTable">
-<tr>
-<th>Class</th>
-<th>Name</th>
-<th>Nickname</th>
-<th>Mode</th>
-<th>Score</th>
-</tr>
+<tr><th>Class</th><th>Name</th><th>Nickname</th><th>Mode</th><th>Score</th></tr>
 </table>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboardPage" class="card hidden">
 <h2>📊 Teacher Dashboard</h2>
 <h3 id="avgScore"></h3>
@@ -145,51 +101,79 @@ font-size:18px;
 </div>
 
 <script>
-// ===== CONFIG =====
-const GOOGLE_SCRIPT_URL="https://script.google.com/macros/s/AKfycbwuivGVPMEtJCLylrzSEfbVHjm89K0CxE9Sr9gJeDLKpM6uDFAtEsfW7iHdmY9wKc6h/exec";//
 const ADMIN_PASS="science123";
+let chosenGame="", chosenClass="", playMode="", student="";
+let currentScore=0, currentQ=0, questions=[];
 
-// ===== ADMIN =====
 function adminGate(fn){
 let p=prompt("Admin Password:");
 if(p===ADMIN_PASS) fn();
 else alert("Wrong password");
 }
 
-// ===== NAV FLOW =====
-let chosenGame="", chosenClass="", playMode="", student="";
-function chooseClass(game){chosenGame=game;hideAll();show("classPage");}
+function chooseGame(game){chosenGame=game;hideAll();show("classPage");}
 function setClass(cls){chosenClass=cls;hideAll();show("modePage");}
-function setPlayMode(m){playMode=m;hideAll();show("namePage");}
-
+function setPlayMode(mode){playMode=mode;hideAll();show("namePage");}
 function show(id){document.getElementById(id).classList.remove("hidden");}
-function hideAll(){
-["classPage","modePage","namePage","gamePage","endPage","leaderboardPage","dashboardPage"]
-.forEach(id=>document.getElementById(id).classList.add("hidden"));
-document.getElementById("pointsCounter").classList.add("hidden");
+function hideAll(){["classPage","modePage","namePage","gamePage","endPage","leaderboardPage","dashboardPage"].forEach(id=>document.getElementById(id).classList.add("hidden"));document.getElementById("pointsCounter").classList.add("hidden");}
+
+function startGame(){
+let name=document.getElementById("studentName").value.trim();
+let nick=document.getElementById("nickname").value.trim();
+if(!name||!nick){alert("Please enter both name and nickname.");return;}
+student={name:name,nick:nick};
+hideAll();
+show("gamePage");
+document.getElementById("modeTitle").textContent=`${chosenGame} - ${playMode}`;
+currentScore=0;currentQ=0;
+document.getElementById("pointsCounter").classList.remove("hidden");
+loadQuestions();
+showQuestion();
 }
 
-// ===== QUESTIONS =====
-const bank = {
-Bonding: [
-  {q:"A covalent bond is formed when valence electrons are...", a:["Transferred","Shared","Lost","Made"], c:1},
-  {q:"An ionic bond is formed when valence electrons are...", a:["Shared","Transferred","Ignored","Split"], c:1},
-  {q:"Atoms form bonds using the following?", a:["Protons","Electrons","Valence Electrons","Nuclei"], c:2},
-  {q:"What forms when two nonmetals bond together?", a:["Atomic bonds","Ionic bonds","Covalent bonds","Physical change"], c:2},
-  {q:"Which type of bond involves sharing electrons?", a:["Ionic","Covalent","Metallic","Hydrogen"], c:1},
-  {q:"Which type of bond involves transferring electrons?", a:["Ionic","Covalent","Metallic","Hydrogen"], c:0},
-  {q:"Which of the following is a covalent bond example?", a:["H2O","NaCl","MgO","KBr"], c:0},
-  {q:"Which of the following is an ionic bond example?", a:["H2O","CO2","NaCl","O2"], c:2},
-  {q:"A positively charged atom is called...", a:["Anion","Cation","Electron","Molecule"], c:1},
-  {q:"A negatively charged atom is called...", a:["Anion","Cation","Electron","Molecule"], c:0},
-  {q:"Atoms share electrons in which type of bond?", a:["Covalent","Ionic","Metallic","Hydrogen"], c:0},
-  {q:"Atoms transfer electrons in which type of bond?", a:["Covalent","Ionic","Metallic","Hydrogen"], c:1},
-  {q:"Valence electrons are found in the...", a:["Nucleus","Inner shells","Outermost shell","Protons"], c:2},
-  {q:"A bond between two nonmetals is usually...", a:["Ionic","Covalent","Metallic","Hydrogen"], c:1},
-  {q:"A bond between a metal and a nonmetal is usually...", a:["Ionic","Covalent","Metallic","Hydrogen"], c:0},
-  {q:"Which bond involves electrostatic attraction?", a:["Ionic","Covalent","Metallic","Hydrogen"], c:0},
-  {q:"Which bond involves electron sharing?", a:["Ionic","Covalent","Metallic","Hydrogen"], c:1},
-  {q:"Which type of bond is strongest in solids?", a:["Covalent","Ionic","Metallic","Hydrogen"], c:0},
-  {q:"Ionic bonds form between atoms with...", a:["Similar electronegativity","Very different electronegativity","Same number of protons","Same mass number"], c:1},
-  {q:"Covalent bonds form between atoms with...", a:["Similar electronegativity","Very different electronegativity","Metal and nonmetal","Ions"], c:0},
-  {q:"Which is an example of a molecule with covalent
+const bank={
+Bonding:[
+{q:"A covalent bond is formed when valence electrons are...",a:["Transferred","Shared","Lost","Made"],c:1},
+{q:"An ionic bond is formed when valence electrons are...",a:["Shared","Transferred","Ignored","Split"],c:1},
+{q:"Atoms form bonds using the following?",a:["Protons","Electrons","Valence Electrons","Nuclei"],c:2},
+{q:"What forms when two nonmetals bond together?",a:["Atomic bonds","Ionic bonds","Covalent bonds","Physical change"],c:2},
+{q:"Which type of bond involves sharing electrons?",a:["Ionic","Covalent","Metallic","Hydrogen"],c:1}
+]
+};
+
+function loadQuestions(){questions=[...bank[chosenGame]];shuffle(questions);}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+
+function showQuestion(){
+if(currentQ>=questions.length){endGame();return;}
+let q=questions[currentQ];
+document.getElementById("question").textContent=q.q;
+let ansDiv=document.getElementById("answers");
+ansDiv.innerHTML="";
+q.a.forEach((opt,i)=>{
+let btn=document.createElement("button");
+btn.textContent=opt;
+btn.onclick=()=>checkAnswer(i,q.c,btn);
+ansDiv.appendChild(btn);
+});
+document.getElementById("pointsCounter").textContent=`Points: ${currentScore} / ${questions.length}`;
+}
+
+function checkAnswer(selected, correct, btn){
+if(selected===correct){btn.classList.add("correct");currentScore++;}
+else btn.classList.add("wrong");
+setTimeout(()=>{currentQ++;showQuestion();},500);
+}
+
+function endGame(){
+hideAll();show("endPage");
+document.getElementById("scoreText").textContent=`${student.name} (${student.nick}) scored ${currentScore} / ${questions.length}`;
+}
+
+function showLeaderboard(){hideAll();show("leaderboardPage");}
+function setBoardFilter(cls){alert("Leaderboard filter feature coming soon.");}
+function showDashboard(){hideAll();show("dashboardPage");}
+</script>
+
+</body>
+</html>
