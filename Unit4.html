@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Chemistry Game Hub</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{font-family:Arial;background:#0b132b;color:white;margin:0}
+.card{background:#1c2541;margin:20px;padding:20px;border-radius:15px;text-align:center}
+button{padding:12px 20px;font-size:17px;border:none;border-radius:12px;margin:6px;cursor:pointer}
+select,input{padding:10px;font-size:18px;border-radius:8px;border:none}
+.hidden{display:none}
+.correct{background:#06d6a0;color:black;animation:pop .5s}
+.wrong{background:#ef476f;color:white;animation:shake .5s}
+.mode{background:#3a506b;color:white}
+table{margin:auto;color:white;border-collapse:collapse}
+#leaderboardTable td,#leaderboardTable th{padding:8px;border:1px solid white}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-6px)}}
+@keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+
+/* medals */
+.gold{background:#ffd700;color:black}
+.silver{background:#c0c0c0;color:black}
+.bronze{background:#cd7f32;color:black}
+
+/* nav */
+nav{background:#111;color:white;display:flex;align-items:center;padding:10px}
+nav h2{margin:0 20px}
+nav button{background:#1c2541;color:white}
+.dropdown{position:relative}
+.dropdown-content{
+display:none;
+position:absolute;
+background:#1c2541;
+min-width:160px;
+z-index:1;
+padding:10px;
+border-radius:10px;
+}
+.dropdown:hover .dropdown-content{display:block}
+.dropdown-content button{display:block;width:100%}
+</style>
+</head>
+
+<body>
+
+<!-- NAV BAR -->
+<nav>
+<h2>⚡ Chem Game Hub</h2>
+
+<div class="dropdown">
+<button>🎮 Games</button>
+<div class="dropdown-content">
+<button onclick="chooseClass('Bonding')">🔗 Bonding</button>
+<button onclick="chooseClass('Reactions')">🔥 Reactions</button>
+<button onclick="chooseClass('Atoms')">🧬 Atoms & Ions</button>
+<button onclick="chooseClass('Balancing')">⚖️ Balancing</button>
+</div>
+</div>
+
+<button onclick="showLeaderboard()">🏆 Leaderboard</button>
+<button onclick="showLive()">📺 Live Scoreboard</button>
+<button onclick="adminGate(showDashboard)">📊 Teacher Tools</button>
+</nav>
+
+
+<h1 style="text-align:center;margin-top:20px;">Welcome to Chemistry Games!</h1>
+
+
+<!-- STEP 1 CLASS -->
+<div id="classPage" class="card hidden">
+<h2>Select Your Class</h2>
+<button class="mode" onclick="setClass('8A')">8A</button>
+<button class="mode" onclick="setClass('8C')">8C</button>
+</div>
+
+
+<!-- STEP 2 MODE -->
+<div id="modePage" class="card hidden">
+<h2>How Are You Playing?</h2>
+<button onclick="setPlayMode('Solo')" class="mode">🎯 Individual</button>
+<button onclick="setPlayMode('Battle')" class="mode">⚔️ Group Battle</button>
+</div>
+
+
+<!-- STEP 3 NAME -->
+<div id="namePage" class="card hidden">
+<h2>Enter Your Info</h2>
+<p>Name (or initials):</p>
+<input id="studentName">
+
+<p>School Appropriate Nickname:</p>
+<input id="nickname">
+
+<button onclick="startGame()" class="mode">Start Game</button>
+</div>
+
+
+<!-- GAME -->
+<div id="gamePage" class="card hidden">
+<h2 id="modeTitle"></h2>
+<h3 id="question"></h3>
+<div id="answers"></div>
+</div>
+
+
+<!-- END -->
+<div id="endPage" class="card hidden">
+<h2 id="scoreText"></h2>
+<button onclick="window.print()">🖨 Print Report</button>
+<button onclick="location.reload()">Home</button>
+</div>
+
+
+<!-- LEADERBOARD -->
+<div id="leaderboardPage" class="card hidden">
+<h2>🏆 Live Leaderboard</h2>
+
+<button onclick="setBoardFilter('ALL')" class="mode">All Classes</button>
+<button onclick="setBoardFilter('8A')" class="mode">8A Only</button>
+<button onclick="setBoardFilter('8C')" class="mode">8C Only</button>
+
+<table id="leaderboardTable">
+<tr>
+<th>Class</th>
+<th>Name</th>
+<th>Nickname</th>
+<th>Mode</th>
+<th>Score</th>
+</tr>
+</table>
+</div>
+
+
+<!-- LIVE -->
+<div id="livePage" class="card hidden">
+<h2>📺 Live Scoreboard</h2>
+<div id="liveList"></div>
+</div>
+
+
+<!-- DASHBOARD -->
+<div id="dashboardPage" class="card hidden">
+<h2>📊 Teacher Dashboard</h2>
+<h3 id="avgScore"></h3>
+<h3 id="totalGames"></h3>
+<h3 id="modeStats"></h3>
+<div id="missedList"></div>
+</div>
+
+
+<script>
+// ===== CONFIG =====
+const GOOGLE_SCRIPT_URL="https://script.google.com/macros/s/AKfycbwuivGVPMEtJCLylrzSEfbVHjm89K0CxE9Sr9gJeDLKpM6uDFAtEsfW7iHdmY9wKc6h/exec";
+const ADMIN_PASS="SCIENCE123";
+
+function adminGate(fn){
+let p=prompt("Admin Password:");
+if(p===ADMIN_PASS) fn();
+else alert("Wrong password");
+}
+
+
+// ===== NAV FLOW =====
+let chosenGame="", chosenClass="", playMode="", student="";
+
+function chooseClass(game){chosenGame=game;hideAll();show("classPage");}
+function setClass(cls){chosenClass=cls;hideAll();show("modePage");}
+function setPlayMode(m){playMode=m;hideAll();show("namePage");}
+
+function show(id){document.getElementById(id).classList.remove("hidden");}
+function hideAll(){
+["classPage","modePage","namePage","gamePage","endPage","leaderboardPage","livePage","dashboardPage"]
+.forEach(id=>document.getElementById(id).classList.add("hidden"));
+}
+
+
+// ===== QUESTIONS =====
+const bank={
+Bonding:[
+{q:"Covalent bond = electrons are…",a:["Shared","Transferred","Lost","Made"],c:0},
+{q:"Ionic bond = electrons are…",a:["Shared","Transferred","Ignored","Split"],c:1}
+],
+Reactions:[
+{q:"Ice melting is…",a:["Chemical","Physical","None","Nuclear"],c:1},
+{q:"Milk souring is…",a:["Physical","Chemical","None"],c:1}
+],
+Atoms:[
+{q:"Smallest matter unit?",a:["Molecule","Ion","Atom","Cell"],c:2},
+{q:"Center of atom?",a:["Shell","Nucleus","Core"],c:1}
+],
+Balancing:[
+{q:"Balance: H2 + O2 → H2O",a:["1-1-1","2-1-2","2-1-1"],c:1}
+]
+};
+
+
+// ===== GAME =====
+let index=0,score=0,responses=[];
+
+function startGame(){
+student=document.getElementById("studentName").value;
+if(!student){alert("Enter name!");return;}
+
+hideAll();
+show("gamePage");
+
+document.getElementById("modeTitle").innerText=
+`${chosenGame} — ${chosenClass} — ${playMode}`;
+
+index=0;score=0;responses=[];
+showQuestion();
+}
+
+function showQuestion(){
+const q=bank[chosenGame][index];
+document.getElementById("question").innerText=q.q;
+
+const ans=document.getElementById("answers");
+ans.innerHTML="";
+
+q.a.forEach((choice,i)=>{
+let b=document.createElement("button");
+b.innerText=choice;
+b.onclick=()=>selectAnswer(i);
+ans.appendChild(b);
+});
+}
+
+function selectAnswer(i){
+const q=bank[chosenGame][index];
+const buttons=document.querySelectorAll("#answers button");
+buttons.forEach(b=>b.disabled=true);
+
+if(i===q.c){buttons[i].classList.add("correct");score++;}
+else{buttons[i].classList.add("wrong");buttons[q.c].classList.add("correct");}
+
+responses.push({question:q.q,selected:q.a[i],correct:q.a[q.c]});
+
+setTimeout(()=>{
+index++;
+if(index>=bank[chosenGame].length) finishGame();
+else showQuestion();
+},700);
+}
+
+function finishGame(){
+hideAll();
+show("endPage");
+
+document.getElementById("scoreText").innerText=
+`${student} scored ${score}/${bank[chosenGame].length}`;
+
+fetch(GOOGLE_SCRIPT_URL,{
+method:"POST",
+body:JSON.stringify({
+student:student,
+nickname:document.getElementById("nickname").value,
+class:chosenClass,
+mode:chosenGame+" "+playMode,
+score:score,
+responses:responses
+})
+});
+}
+
+
+// ===== LIVE LEADERBOARD WITH TOGGLE =====
+let boardFilter="ALL";
+let leaderboardInterval=null;
+
+function showLeaderboard(){
+hideAll();
+show("leaderboardPage");
+loadLeaderboard();
+clearInterval(leaderboardInterval);
+leaderboardInterval=setInterval(loadLeaderboard,8000);
+}
+
+function setBoardFilter(f){
+boardFilter=f;
+loadLeaderboard();
+}
+
+function loadLeaderboard(){
+fetch(GOOGLE_SCRIPT_URL)
+.then(r=>r.json())
+.then(data=>{
+if(boardFilter!=="ALL")
+data=data.filter(d=>d.class===boardFilter);
+
+data.sort((a,b)=>b.score-a.score);
+
+const table=document.getElementById("leaderboardTable");
+table.innerHTML=`
+<tr>
+<th>Class</th>
+<th>Name</th>
+<th>Nickname</th>
+<th>Mode</th>
+<th>Score</th>
+</tr>
+`;
+
+data.slice(0,50).forEach((d,i)=>{
+let row=table.insertRow();
+if(i===0)row.className="gold";
+else if(i===1)row.className="silver";
+else if(i===2)row.className="bronze";
+
+row.insertCell(0).innerText=d.class;
+row.insertCell(1).innerText=d.student;
+row.insertCell(2).innerText=d.nickname;
+row.insertCell(3).innerText=d.mode;
+row.insertCell(4).innerText=d.score;
+});
+});
+}
+
+
+// ===== LIVE SCOREBOARD =====
+function showLive(){
+hideAll();
+show("livePage");
+updateLive();
+setInterval(updateLive,9000);
+}
+
+function updateLive(){
+fetch(GOOGLE_SCRIPT_URL)
+.then(r=>r.json())
+.then(data=>{
+document.getElementById("liveList").innerHTML=
+data.slice(-25).reverse().map(d=>`
+<p>🎯 ${d.nickname} (${d.class}) — ${d.score} pts</p>
+`).join("");
+});
+}
+
+
+// ===== TEACHER DASHBOARD =====
+function showDashboard(){
+hideAll();
+show("dashboardPage");
+
+fetch(GOOGLE_SCRIPT_URL)
+.then(r=>r.json())
+.then(data=>{
+const scores=data.map(d=>Number(d.score));
+document.getElementById("avgScore").innerText=
+"Average Score: "+(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(2);
+
+document.getElementById("totalGames").innerText=
+"Total Games: "+scores.length;
+});
+}
+</script>
+
+</body>
+</html>
